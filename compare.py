@@ -13,6 +13,11 @@ coverage = (df_candidates[valid_cols].notna().sum() / len(df_candidates)).round(
 print("Proportion of valid values ​​in each sensor (candidates):")
 print(coverage)
 
+# --- Explicit comparison explanation ---
+print("\n[INFO] The following plot and statistics provide a direct comparison between the environmental parameters of known archaeological benchmarks and the new candidates.\n"
+      "The Z-score profile plot visualizes how similar or different the candidates are from the benchmarks for each sensor.\n"
+      "Use this to identify which candidates most closely resemble known sites, or which parameters stand out as anomalous.")
+
 z_bench = (df_benchmark[valid_cols] - df_benchmark[valid_cols].mean()) \
           / df_benchmark[valid_cols].std()
 

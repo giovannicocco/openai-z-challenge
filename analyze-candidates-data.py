@@ -85,13 +85,17 @@ class ClosestMatch(BaseModel):
 class ClosestMatches(BaseModel):
     matches: list[ClosestMatch]
 
+model_name = "o3"
 response = client.responses.parse(
-    model="o3",
+    model=model_name,
     input=[{"role": "user", "content": prompt}],
     text_format=ClosestMatches,
 )
 
 matches = response.output_parsed.matches
+
+# Print model version used
+print(f"\n[INFO] OpenAI model used: {model_name}")
 
 print("\nMatches:")
 for m in matches:

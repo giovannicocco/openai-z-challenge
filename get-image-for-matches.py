@@ -1,5 +1,6 @@
 def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     point = ee.Geometry.Point(lon, lat).buffer(buffer_m)
+    print("[INFO] Using dataset_id: COPERNICUS/S2_SR_HARMONIZED (Sentinel-2) for RGB, Infrared (NIR), NDVI, NDWI")
     img = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
            .filterBounds(point)
            .filterDate(f'{year}-01-01', f'{year}-12-31')
@@ -19,6 +20,7 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     urls['NDWI'] = ndwi.getThumbURL({
         'region': point, 'dimensions': 512, 'min': -1, 'max': 1,
         'palette': ['brown', 'beige', 'blue']})
+    print("[INFO] Using dataset_id: COPERNICUS/S1_GRD (Sentinel-1) for Sentinel-1 VV")
     # Sentinel-1 VV
     s1 = ee.ImageCollection('COPERNICUS/S1_GRD') \
         .filterBounds(point) \
@@ -48,7 +50,16 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
 
 # Example usage for all matches using the in-memory df_matches DataFrame:
 import pandas as pd
+# Log dataset ID if available in df_matches
 if 'df_matches' in globals() and df_matches is not None and not df_matches.empty:
+    dataset_id = None
+    # Try to get dataset_id from DataFrame attribute or column
+    if hasattr(df_matches, 'dataset_id'):
+        dataset_id = getattr(df_matches, 'dataset_id', None)
+    elif 'dataset_id' in df_matches.columns:
+        dataset_id = df_matches['dataset_id'].iloc[0]
+    if dataset_id:
+        print(f"[INFO] Using dataset_id: {dataset_id}")
     for _, m in df_matches.iterrows():
         print(f"\n[INFO] Generating images for: {m['name']} (lat: {m['lat']}, lon: {m['lon']})")
         plot_multiple_satellite_views(m['lat'], m['lon'], buffer_m=1000, year=2023)

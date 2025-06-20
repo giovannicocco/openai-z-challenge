@@ -1,3 +1,17 @@
+# --- DATASET IDS USED ---
+DATASET_IDS = [
+    'COPERNICUS/S2_SR_HARMONIZED',
+    'COPERNICUS/S1_GRD',
+    'USGS/SRTMGL1_003',
+    'projects/mapbiomas-raisg/public/collection3/mapbiomas_raisg_panamazonia_collection3_integration_v2',
+    'LARSE/GEDI/GEDI02_A_002_MONTHLY',
+    'NASA/JPL/global_forest_canopy_height_2005'
+]
+print("[INFO] Datasets used in this script:")
+for ds in DATASET_IDS:
+    print(f"  - {ds}")
+
+# --- Earth Engine functions ---
 # --- Authenticate with Earth Engine before running this block ---
 
 import ee

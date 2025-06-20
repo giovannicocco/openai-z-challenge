@@ -35,11 +35,13 @@ This is the core module that enriches location data with multiple satellite sens
 - MapBiomas Pan-Amazon land cover data
 - GEDI (Global Ecosystem Dynamics Investigation) LiDAR
 
+
 ### 4. Candidate Site Discovery (`search-candidates.py`)
 - Uses AI to suggest promising but underexplored locations in the Nhamini-wi region
 - Based on historical legends, indigenous oral history, and expedition records
 - Generates hypothetical coordinates for areas that warrant archaeological investigation
 - Provides rationale for each suggested location
+- **Each candidate footprint includes a center (latitude/longitude) and a fixed radius (e.g., 500m), allowing representation as a circle or bounding box (bbox/WKT) for spatial analysis, as required by the OpenAI to Z Challenge.**
 
 ### 5. Candidate Data Processing (`get-candidates-data.py`)
 - Applies the same remote sensing analysis to candidate locations

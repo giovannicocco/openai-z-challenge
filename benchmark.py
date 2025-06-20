@@ -12,7 +12,6 @@ except Exception:
     openai_key = os.environ.get("OPENAI_API_KEY")
 client = OpenAI(api_key=openai_key) if openai_key else OpenAI()
 
-
 # Define Pydantic models for structured output
 class BenchmarkSite(BaseModel):
     name: str
@@ -48,6 +47,9 @@ try:
     display(df_benchmark)
 except Exception:
     print(df_benchmark)
+
+# Print model version used
+print(f"\n[INFO] OpenAI model used: o3")
 
 # Print token usage if available
 usage = getattr(response, "usage", None)
