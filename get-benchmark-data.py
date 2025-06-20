@@ -190,5 +190,10 @@ def enrich_benchmarks_with_all_sensors(
 # --- Usage example ---
 # df_benchmark = pd.read_csv("benchmark_sites_acre.csv")  # or from previous cell
 df_benchmark = enrich_benchmarks_with_all_sensors(df_benchmark)
-df_benchmark.to_csv("benchmark_sites_acre_enriched_all.csv", index=False)
+
+# Substitui infinitos por NaN para evitar warnings do pandas
+import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+df_benchmark.replace([np.inf, -np.inf], np.nan, inplace=True)
 display(df_benchmark)

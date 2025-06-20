@@ -5,7 +5,7 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
            .filterDate(f'{year}-01-01', f'{year}-12-31')
            .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
            .median().clip(point))
-    # URLs para cada composição
+    # URLs for each composite
     urls = {}
     urls['RGB'] = img.select(['B4', 'B3', 'B2']).getThumbURL({
         'region': point, 'dimensions': 512, 'min': 500, 'max': 2500})
@@ -30,7 +30,7 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     urls['Sentinel-1 VV'] = s1_img.getThumbURL({
         'region': point, 'dimensions': 512, 'min': -25, 'max': 0,
         'palette': ['black', 'white']})
-    # Plot todas as imagens
+    # Plot all images
     import requests
     from PIL import Image
     from io import BytesIO
@@ -46,5 +46,23 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     plt.tight_layout()
     plt.show()
 
-# Exemplo de uso:
-plot_multiple_satellite_views(candidate_lat, candidate_lon, buffer_m=1000, year=2023)
+
+
+
+# Example usage for all matches using the df_matches DataFrame:
+try:
+    import pandas as pd
+    df_matches = pd.DataFrame(df_matches)  # if already in memory
+except NameError:
+    try:
+        import pandas as pd
+        df_matches = pd.read_csv("matches.csv")
+    except Exception:
+        df_matches = None
+
+if df_matches is not None and not df_matches.empty:
+    for _, m in df_matches.iterrows():
+        print(f"\n[INFO] Generating images for: {m['name']} (lat: {m['lat']}, lon: {m['lon']})")
+        plot_multiple_satellite_views(m['lat'], m['lon'], buffer_m=1000, year=2023)
+else:
+    print("No match found to generate images.")

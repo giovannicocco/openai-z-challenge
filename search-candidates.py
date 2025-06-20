@@ -1,8 +1,9 @@
+
 from kaggle_secrets import UserSecretsClient
 import openai
-import json
-import re
-from prettytable import PrettyTable
+from pydantic import BaseModel
+from typing import List
+import pandas as pd
 
 # Initialize OpenAI client
 user_secrets = UserSecretsClient()
@@ -20,41 +21,47 @@ prompt = (
     "Example: [{\"name\": \"Suggested Area\", \"lat\": 1.2345, \"lon\": -67.8901, \"rationale\": \"...\"}, ...]"
 )
 
-# Call the model
-response = client.chat.completions.create(
+
+ # Define schema with Pydantic
+class Area(BaseModel):
+    name: str
+    lat: float
+    lon: float
+    rationale: str
+
+class SuggestedAreas(BaseModel):
+    areas: List[Area]
+
+response = client.responses.parse(
     model="o3",
-    messages=[{"role": "user", "content": prompt}]
+    input=[{"role": "user", "content": prompt}],
+    text_format=SuggestedAreas,
 )
 
-# Parse the JSON
-content = response.choices[0].message.content
-try:
-    areas = json.loads(content)
-except:
-    match = re.search(r'\[.*\]', content, re.DOTALL)
-    areas = json.loads(match.group(0)) if match else []
+areas = response.output_parsed.areas
 
-# Display as a pretty table
-table = PrettyTable()
-table.field_names = ["| Name", "Latitude", "Longitude", "Rationale (≤200 chars) |"]
-table.hrules = True
 
-for area in areas:
-    table.add_row([
-        f"| {area['name']}", 
-        area['lat'], 
-        f"{area['lon']}", 
-        f"{area['rationale']} |"
-    ])
+ # Display as DataFrame (organized for notebook/Kaggle)
+display(pd.DataFrame([a.model_dump() for a in areas])[['name', 'lat', 'lon', 'rationale']].rename(columns={
+    'name': 'Name',
+    'lat': 'Latitude',
+    'lon': 'Longitude',
+    'rationale': 'Rationale (≤200 chars)'
+}))
 
-print(table)
 
 # Print coordinates for reference
+
 print("\nSuggested Coordinates:")
 for area in areas:
-    print(f"{area['name']}: lat {area['lat']}, lon {area['lon']}")
+    print(f"{area.name}: lat {area.lat}, lon {area.lon}")
 
+
+# Display usage information safely
 usage = response.usage
-print(f"\nPrompt tokens: {usage.prompt_tokens}")
-print(f"Completion tokens: {usage.completion_tokens}")
-print(f"Total tokens: {usage.total_tokens}")
+try:
+    print("\nPrompt tokens:", getattr(usage, "prompt_tokens", None))
+    print("Completion tokens:", getattr(usage, "completion_tokens", None))
+    print("Total tokens:", getattr(usage, "total_tokens", None))
+except Exception:
+    print("\nUsage info:", usage)

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 sensor_cols = [col for col in df_benchmark.columns if df_benchmark[col].dtype != object]
 
-# Seleciona apenas sensores com valores válidos em pelo menos um grupo
+# Select only sensors with valid values in at least one group
 valid_cols = [
     col for col in sensor_cols
     if (df_benchmark[col].notna().any() and df_candidates[col].notna().any())

@@ -1,9 +1,21 @@
-# Run the sensor enrichment on the new candidate areas
 
-df_candidates = pd.DataFrame(areas)  # From previous cell's 'areas'
+# Run sensor enrichment on the new candidate areas
+
+# Ensure compatibility with list of Area objects (Pydantic)
+df_candidates = pd.DataFrame([a.model_dump() for a in areas])
+num_areas = len(areas)
 df_candidates = enrich_benchmarks_with_all_sensors(df_candidates)
-df_candidates.to_csv("nhaminiwi_candidates_enriched.csv", index=False)
+
+# Check: ensure all candidates are present after enrichment
+if len(df_candidates) != num_areas:
+    print(f"[ERROR] Expected {num_areas} candidates, but df_candidates has {len(df_candidates)} after enrichment!")
+    print("Expected IDs:", [a['name'] if hasattr(a, 'name') else a.get('name') for a in areas])
+    print("Present IDs:", df_candidates['name'].tolist() if 'name' in df_candidates.columns else df_candidates.index.tolist())
+else:
+    print(f"[OK] All {num_areas} candidates present in df_candidates.")
+
 display(df_candidates)
 
-candidate_lat = areas[0]['lat']
-candidate_lon = areas[0]['lon']
+# Example: get coordinates of the first candidate
+candidate_lat = df_candidates.iloc[0]['lat']
+candidate_lon = df_candidates.iloc[0]['lon']
