@@ -46,21 +46,9 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     plt.tight_layout()
     plt.show()
 
-
-
-
-# Example usage for all matches using the df_matches DataFrame:
-try:
-    import pandas as pd
-    df_matches = pd.DataFrame(df_matches)  # if already in memory
-except NameError:
-    try:
-        import pandas as pd
-        df_matches = pd.read_csv("matches.csv")
-    except Exception:
-        df_matches = None
-
-if df_matches is not None and not df_matches.empty:
+# Example usage for all matches using the in-memory df_matches DataFrame:
+import pandas as pd
+if 'df_matches' in globals() and df_matches is not None and not df_matches.empty:
     for _, m in df_matches.iterrows():
         print(f"\n[INFO] Generating images for: {m['name']} (lat: {m['lat']}, lon: {m['lon']})")
         plot_multiple_satellite_views(m['lat'], m['lon'], buffer_m=1000, year=2023)
