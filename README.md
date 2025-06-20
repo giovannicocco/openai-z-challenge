@@ -107,3 +107,25 @@ The project employs a multi-sensor approach to characterize archaeological sites
 - Prioritized lists of sites for field verification
 
 This project demonstrates the integration of artificial intelligence with remote sensing technology for archaeological discovery in one of the world's most challenging environments - the Amazon rainforest.
+
+## Setting Up Kaggle Secrets
+
+To keep credentials secure when running in a Kaggle notebook, create two secrets:
+
+1. **`openai`** – your OpenAI API key.
+2. **`service_account`** – the Google Cloud service account JSON.
+
+Open the **Add-ons → Secrets** dialog in Kaggle and add these entries. The scripts will automatically load them via `UserSecretsClient`.
+
+## Notebook Execution Order
+
+Run the following scripts in this order within your Kaggle notebook:
+
+1. `auth.py` – authenticate with Earth Engine.
+2. `benchmark.py` – generate reference sites.
+3. `get-benchmark-data.py` – collect remote sensing data for benchmarks.
+4. `search-candidates.py` – propose potential locations.
+5. `get-candidates-data.py` – gather data for candidates.
+6. `compare.py` – statistically compare results.
+7. `analyze-candidates-data.py` – use OpenAI to interpret findings.
+8. `get-image-for-matches.py` – visualize imagery for top matches.
