@@ -1,0 +1,23 @@
+# Dependências principais
+openai>=1.0.0
+pandas>=1.5.0
+numpy>=1.24.0
+matplotlib>=3.6.0
+
+# Google Earth Engine
+earthengine-api>=0.1.300
+
+# Para visualização de tabelas
+prettytable>=3.0.0
+
+# Para processamento de imagens
+Pillow>=9.0.0
+requests>=2.28.0
+
+# Para ambientes Kaggle (se necessário)
+kaggle>=1.5.0
+
+# Dependências padrão do Python (já incluídas, mas listadas para referência)
+# json - built-in
+# re - built-in  
+# time - built-in
