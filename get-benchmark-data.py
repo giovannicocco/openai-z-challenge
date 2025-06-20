@@ -1,4 +1,3 @@
-
 # --- Authenticate with Earth Engine before running this block ---
 
 import ee
@@ -119,26 +118,39 @@ def get_mapbiomas_class(lat, lon, year=2020):
         print(f"MapBiomas error at ({lat}, {lon}): {e}")
         return None
 
+
 def get_gedi_canopy_height(lat, lon):
-    """Returns mean GEDI canopy height (rh98) for a point."""
+    """
+    Returns mean GEDI canopy height (rh98) for a point.
+    If GEDI is not available, fallback to NASA/JPL/global_forest_canopy_height_2005.
+    """
     try:
         point = ee.Geometry.Point([lon, lat])
         gedi = (ee.ImageCollection('LARSE/GEDI/GEDI02_A_002_MONTHLY')
                 .filterBounds(point))
         if gedi.size().getInfo() == 0:
-            return None
-
-        # 1) selecione a banda rh98
+            raise ValueError("No GEDI pulses")
         gedi_img = gedi.select('rh98').median()
-
-        # 2) use o mesmo nome na reduceRegion
         value = gedi_img.reduceRegion(
             ee.Reducer.mean(), point, 25).get('rh98')
-
-        return value.getInfo() if value is not None else None
+        val = value.getInfo() if value is not None else None
+        if val is not None and val != 0:
+            return val
+        # If value is None or 0, fallback
+        raise ValueError("GEDI returned None or 0")
     except Exception as e:
-        print(f"GEDI error at ({lat}, {lon}): {e}")
-        return None
+        print(f"GEDI error at ({lat}, {lon}): {e}. Trying NASA/JPL/global_forest_canopy_height_2005...")
+        try:
+            # NASA/JPL/global_forest_canopy_height_2005: altura média do dossel em metros (2005)
+            point = ee.Geometry.Point([lon, lat])
+            canopy_img = ee.Image('NASA/JPL/global_forest_canopy_height_2005')
+            value = canopy_img.reduceRegion(
+                ee.Reducer.mean(), point, 1000).get('1')
+            val = value.getInfo() if value is not None else None
+            return val
+        except Exception as e2:
+            print(f"Fallback canopy height error at ({lat}, {lon}): {e2}")
+            return None
 
 # --- Enrich DataFrame with all sensors ---
 
@@ -160,7 +172,7 @@ def enrich_benchmarks_with_all_sensors(
     vv_list = []
     vh_list = []
     landclass_list = []
-    gedi_list = []
+    canopyheight_list = []
 
     for idx, row in df.iterrows():
         lat, lon = row['lat'], row['lon']
@@ -173,7 +185,7 @@ def enrich_benchmarks_with_all_sensors(
         vv_list.append(get_sentinel1_vv(lat, lon, s1_year, buffer_m=1000))
         vh_list.append(get_sentinel1_vh(lat, lon, s1_year, buffer_m=1000))
         landclass_list.append(get_mapbiomas_class(lat, lon, mapbiomas_year))
-        gedi_list.append(get_gedi_canopy_height(lat, lon))
+        canopyheight_list.append(get_gedi_canopy_height(lat, lon))
         time.sleep(delay)  # To avoid quota limits
 
     df['NDVI'] = ndvi_list
@@ -184,7 +196,7 @@ def enrich_benchmarks_with_all_sensors(
     df['Sentinel1_VV'] = vv_list
     df['Sentinel1_VH'] = vh_list
     df['MapBiomas_Class'] = landclass_list
-    df['GEDI_CanopyHeight'] = gedi_list
+    df['CanopyHeight'] = canopyheight_list
     return df
 
 # --- Usage example ---

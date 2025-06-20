@@ -1,45 +1,57 @@
 from kaggle_secrets import UserSecretsClient
-import openai
+from openai import OpenAI
+from pydantic import BaseModel
 import pandas as pd
-import json
-import re
-from prettytable import PrettyTable
 
-# API key
-user_secrets = UserSecretsClient()
-client = openai.OpenAI(api_key=user_secrets.get_secret("openai"))
+# Load OpenAI API key from Kaggle secrets or environment
+try:
+    user_secrets = UserSecretsClient()
+    openai_key = user_secrets.get_secret("openai")
+except Exception:
+    import os
+    openai_key = os.environ.get("OPENAI_API_KEY")
+client = OpenAI(api_key=openai_key) if openai_key else OpenAI()
 
-# Prompt
+
+# Define Pydantic models for structured output
+class BenchmarkSite(BaseModel):
+    name: str
+    lat: float
+    lon: float
+
+class BenchmarkSites(BaseModel):
+    sites: list[BenchmarkSite]
+
+# Prompt for OpenAI Structured Output (expects a JSON object with a 'sites' key)
 prompt = (
     "You are an archaeologist specialized in the Amazon region.\n"
     "List at least 10 known archaeological sites located in the state of Acre, Brazil, "
     "including their approximate latitude and longitude.\n"
-    "Format the output as a JSON array with the following fields: name, lat, lon.\n"
-    "Example: [{\"name\": \"Site Name\", \"lat\": -X.XXXX, \"lon\": -Y.YYYY}]\n"
+    "Return ONLY a JSON object with a 'sites' key, which is a list of objects with fields: name (string), lat (number), lon (number).\n"
+    "Example: {\"sites\": [{\"name\": \"Site Name\", \"lat\": -X.XXXX, \"lon\": -Y.YYYY}]}\n"
     "Focus on geoglyphs and earthworks documented in academic literature or official records.\n"
 )
 
-# Call o3
-response = client.chat.completions.create(
+# Call OpenAI API and parse with Pydantic Structured Output
+response = client.responses.parse(
     model="o3",
-    messages=[{"role": "user", "content": prompt}]
+    input=[{"role": "user", "content": prompt}],
+    text_format=BenchmarkSites,
 )
 
-# Capture and extract secure JSON from the response
-content = response.choices[0].message.content
+sites = response.output_parsed.sites
+df_benchmark = pd.DataFrame([s.model_dump() for s in sites])
+
+# Display DataFrame in notebook/Kaggle environment, fallback to print
 try:
-    sites = json.loads(content)
-except:
-    match = re.search(r'\[.*\]', content, re.DOTALL)
-    sites = json.loads(match.group(0)) if match else []
-    
-df_benchmark = pd.DataFrame(sites)
+    from IPython.display import display
+    display(df_benchmark)
+except Exception:
+    print(df_benchmark)
 
-
-# Display the DataFrame in notebook/Kaggle environment
-display(df_benchmark)
-
-usage = response.usage
-print(f"\nPrompt tokens: {usage.prompt_tokens}")
-print(f"Completion tokens: {usage.completion_tokens}")
-print(f"Total tokens: {usage.total_tokens}")
+# Print token usage if available
+usage = getattr(response, "usage", None)
+if usage:
+    print(f"\nPrompt tokens: {getattr(usage, 'prompt_tokens', getattr(usage, 'input_tokens', None))}")
+    print(f"Completion tokens: {getattr(usage, 'completion_tokens', getattr(usage, 'output_tokens', None))}")
+    print(f"Total tokens: {getattr(usage, 'total_tokens', None)}")

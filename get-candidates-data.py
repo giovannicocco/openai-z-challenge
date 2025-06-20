@@ -1,7 +1,6 @@
 
 # Run sensor enrichment on the new candidate areas
-
-# Ensure compatibility with list of Area objects (Pydantic)
+# The column 'CanopyHeight' is used for both GEDI and NASA/JPL fallback, matching the benchmark structure
 df_candidates = pd.DataFrame([a.model_dump() for a in areas])
 num_areas = len(areas)
 df_candidates = enrich_benchmarks_with_all_sensors(df_candidates)

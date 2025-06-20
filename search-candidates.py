@@ -21,7 +21,6 @@ prompt = (
     "Example: [{\"name\": \"Suggested Area\", \"lat\": 1.2345, \"lon\": -67.8901, \"rationale\": \"...\"}, ...]"
 )
 
-
  # Define schema with Pydantic
 class Area(BaseModel):
     name: str
@@ -40,8 +39,10 @@ response = client.responses.parse(
 
 areas = response.output_parsed.areas
 
+# Ensure full text is shown in the 'rationale' column
+pd.set_option('display.max_colwidth', None)
 
- # Display as DataFrame (organized for notebook/Kaggle)
+# Display as DataFrame (organized for notebook/Kaggle)
 display(pd.DataFrame([a.model_dump() for a in areas])[['name', 'lat', 'lon', 'rationale']].rename(columns={
     'name': 'Name',
     'lat': 'Latitude',
@@ -49,9 +50,7 @@ display(pd.DataFrame([a.model_dump() for a in areas])[['name', 'lat', 'lon', 'ra
     'rationale': 'Rationale (≤200 chars)'
 }))
 
-
 # Print coordinates for reference
-
 print("\nSuggested Coordinates:")
 for area in areas:
     print(f"{area.name}: lat {area.lat}, lon {area.lon}")

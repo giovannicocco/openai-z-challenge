@@ -35,14 +35,6 @@ def generate_candidates_detail(df):
         lines.append("- " + ", ".join(vals))
     return "\n".join(lines)
 
-# Check: print df_candidates before analysis
-print("\n[DEBUG] df_candidates received for analysis:")
-try:
-    from IPython.display import display
-    display(df_candidates)
-except Exception:
-    print(df_candidates)
-
 summary_bench = generate_sensor_summary(df_benchmark, "Benchmark")
 summary_cand = generate_candidates_detail(df_candidates)
 summary = f"{summary_bench}\n\n{summary_cand}"
@@ -108,6 +100,10 @@ for m in matches:
 # Display the result as a DataFrame in Kaggle/notebook environments (optional)
 
 import pandas as pd
+
+# Ensure full text is shown in the 'reason' column (rationale)
+pd.set_option('display.max_colwidth', None)
+
 df_matches = pd.DataFrame([m.model_dump() for m in matches])
 try:
     from IPython.display import display
