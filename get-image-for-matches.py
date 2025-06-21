@@ -1,3 +1,5 @@
+import ee
+
 def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     point = ee.Geometry.Point(lon, lat).buffer(buffer_m)
     print("[INFO] Using dataset_id: COPERNICUS/S2_SR_HARMONIZED (Sentinel-2) for RGB, Infrared (NIR), NDVI, NDWI")
