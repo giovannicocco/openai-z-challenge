@@ -87,10 +87,10 @@ display(df[['name', 'lat', 'lon', 'radius_m', 'bbox', 'bbox_wkt', 'circle_wkt', 
     'lat': 'Latitude',
     'lon': 'Longitude',
     'radius_m': 'Radius (m)',
+    'rationale': 'Rationale (≤200 chars)',
     'bbox': 'BBox [min_lon, min_lat, max_lon, max_lat]',
     'bbox_wkt': 'BBox WKT',
-    'circle_wkt': 'Circle WKT',
-    'rationale': 'Rationale (≤200 chars)'
+    'circle_wkt': 'Circle WKT'
 }))
 
 # Print model version used
@@ -104,8 +104,8 @@ for area in areas:
 # Display usage information safely
 usage = response.usage
 try:
-    print("\nPrompt tokens:", getattr(usage, "prompt_tokens", None))
-    print("Completion tokens:", getattr(usage, "completion_tokens", None))
+    print("\nPrompt tokens:", getattr(usage, "prompt_tokens", getattr(usage, "input_tokens", None)))
+    print("Completion tokens:", getattr(usage, "completion_tokens", getattr(usage, "output_tokens", None)))
     print("Total tokens:", getattr(usage, "total_tokens", None))
 except Exception:
     print("\nUsage info:", usage)
