@@ -121,8 +121,8 @@ Open the **Add-ons → Secrets** dialog in Kaggle and add these entries. The scr
 
 Run the following scripts in this order within your Kaggle notebook:
 
-1. `auth.py` – authenticate with Earth Engine.
-2. `benchmark.py` – generate reference sites.
+1. `benchmark.py` – generate reference sites.
+2. `auth.py` – authenticate with Earth Engine.
 3. `get-benchmark-data.py` – collect remote sensing data for benchmarks.
 4. `search-candidates.py` – propose potential locations.
 5. `get-candidates-data.py` – gather data for candidates.
