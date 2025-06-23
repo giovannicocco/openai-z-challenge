@@ -10,18 +10,20 @@ DATASET_IDS = [
     'LARSE/GEDI/GEDI02_A_002_MONTHLY',
     'NASA/JPL/global_forest_canopy_height_2005'
 ]
+
 print("[INFO] Datasets used in candidate enrichment:")
 for ds in DATASET_IDS:
     print(f"  - {ds}")
+print()
 
 df_candidates = pd.DataFrame([a.model_dump() for a in areas])
 num_areas = len(areas)
 df_candidates = enrich_benchmarks_with_all_sensors(df_candidates)
 
-# Adiciona coluna de download Sentinel-2 thumbnail para cada candidato
+# Add Sentinel-2 thumbnail download column for each candidate
 import ee
 
-# Funções para gerar links de download para diferentes sensores
+# Functions to generate download links for different sensors
 def get_rgb_download_url_html(lat, lon, year="2023", month="05"):
     try:
         collection = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
@@ -122,7 +124,7 @@ def get_s1_vv_download_url_html(lat, lon, year="2023"):
     except Exception:
         return None
 
-# Coluna Download com todos os links disponíveis (adiciona apenas os sensores realmente disponíveis)
+# Download column with all available links (adds only the sensors that are actually available)
 def make_download_links(row):
     links = []
     rgb = get_rgb_download_url_html(row['lat'], row['lon'])
@@ -140,12 +142,12 @@ def make_download_links(row):
     s1vv = get_s1_vv_download_url_html(row['lat'], row['lon'])
     if s1vv:
         links.append(s1vv)
-    # Adicione aqui outros sensores se necessário
+    # Add other sensors here if needed
     return ' | '.join(links)
 
 df_candidates['Download'] = df_candidates.apply(make_download_links, axis=1)
 
-# Para notebooks: exibir HTML corretamente
+# For notebooks: display HTML correctly
 from IPython.display import display, HTML
 display(HTML(df_candidates.to_html(escape=False)))
 

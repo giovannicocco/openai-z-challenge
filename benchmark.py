@@ -1,3 +1,5 @@
+# benchmark.py
+
 from kaggle_secrets import UserSecretsClient
 from openai import OpenAI
 from pydantic import BaseModel
@@ -41,10 +43,17 @@ response = client.responses.parse(
 sites = response.output_parsed.sites
 df_benchmark = pd.DataFrame([s.model_dump() for s in sites])
 
+# Add Google Maps column before display
+def make_gmaps_link(lat, lon):
+    url = f'https://www.google.com/maps/search/?api=1&query={lat},{lon}'
+    return f'<a href="{url}" target="_blank">View on Google Maps</a>'
+
+df_benchmark['Google Maps'] = df_benchmark.apply(lambda row: make_gmaps_link(row['lat'], row['lon']), axis=1)
+
 # Display DataFrame in notebook/Kaggle environment, fallback to print
 try:
-    from IPython.display import display
-    display(df_benchmark)
+    from IPython.display import display, HTML
+    display(HTML(df_benchmark.to_html(escape=False)))
 except Exception:
     print(df_benchmark)
 

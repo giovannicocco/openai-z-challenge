@@ -7,9 +7,11 @@ DATASET_IDS = [
     'LARSE/GEDI/GEDI02_A_002_MONTHLY',
     'NASA/JPL/global_forest_canopy_height_2005'
 ]
+
 print("[INFO] Datasets used in this script:")
 for ds in DATASET_IDS:
     print(f"  - {ds}")
+print()  # Linha em branco para separar do próximo bloco
 
 # --- Earth Engine functions ---
 # --- Authenticate with Earth Engine before running this block ---
