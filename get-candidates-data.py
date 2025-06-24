@@ -1,3 +1,5 @@
+# get-candidates-data.py
+
 # Run sensor enrichment on the new candidate areas
 # The column 'CanopyHeight' is used for both GEDI and NASA/JPL fallback, matching the benchmark structure
 
@@ -19,6 +21,12 @@ print()
 df_candidates = pd.DataFrame([a.model_dump() for a in areas])
 num_areas = len(areas)
 df_candidates = enrich_benchmarks_with_all_sensors(df_candidates)
+
+# Remove 'Google Maps' column if present (inherited from other scripts)
+if 'Google Maps' in df_candidates.columns:
+    df_candidates.drop(columns=['Google Maps'], inplace=True)
+# Keep 'Sentinel2_ID' and 'Sentinel1_ID' columns - only these sensors have individual scene IDs
+# Other sensors (SRTM, MapBiomas, GEDI, NASA/JPL) are static/aggregated datasets without individual scene IDs
 
 # Add Sentinel-2 thumbnail download column for each candidate
 import ee
@@ -147,7 +155,13 @@ def make_download_links(row):
 
 df_candidates['Download'] = df_candidates.apply(make_download_links, axis=1)
 
-# For notebooks: display HTML correctly
+# Substitui infinitos por NaN para evitar warnings do pandas
+import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+df_candidates.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+# Display the main DataFrame with scene IDs included
 from IPython.display import display, HTML
 display(HTML(df_candidates.to_html(escape=False)))
 

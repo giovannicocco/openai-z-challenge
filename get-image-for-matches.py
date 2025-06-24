@@ -1,13 +1,26 @@
+# get-image-for-matches.py
+
 import ee
 
 def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     point = ee.Geometry.Point(lon, lat).buffer(buffer_m)
     print("[INFO] Using dataset_id: COPERNICUS/S2_SR_HARMONIZED (Sentinel-2) for RGB, Infrared (NIR), NDVI, NDWI")
-    img = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+    
+    # Get Sentinel-2 collection and select least cloudy image
+    s2_collection = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
            .filterBounds(point)
            .filterDate(f'{year}-01-01', f'{year}-12-31')
            .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
-           .median().clip(point))
+           .sort('CLOUDY_PIXEL_PERCENTAGE'))
+    
+    img = s2_collection.first().clip(point)
+    
+    # Get Sentinel-2 scene ID
+    s2_id = img.get('PRODUCT_ID')
+    if s2_id is None:
+        s2_id = img.get('system:index')
+    s2_scene_id = s2_id.getInfo() if s2_id is not None else "N/A"
+    
     # URLs for each composite
     urls = {}
     urls['RGB'] = img.select(['B4', 'B3', 'B2']).getThumbURL({
@@ -22,23 +35,33 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     urls['NDWI'] = ndwi.getThumbURL({
         'region': point, 'dimensions': 512, 'min': -1, 'max': 1,
         'palette': ['brown', 'beige', 'blue']})
+    
     print("[INFO] Using dataset_id: COPERNICUS/S1_GRD (Sentinel-1) for Sentinel-1 VV")
     # Sentinel-1 VV
-    s1 = ee.ImageCollection('COPERNICUS/S1_GRD') \
+    s1_collection = ee.ImageCollection('COPERNICUS/S1_GRD') \
         .filterBounds(point) \
         .filterDate(f'{year}-01-01', f'{year}-12-31') \
         .filter(ee.Filter.eq('instrumentMode', 'IW')) \
         .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV')) \
         .select('VV')
-    s1_img = s1.median().clip(point)
+    
+    s1_img = s1_collection.median().clip(point)
+    
+    # Get Sentinel-1 scene ID (using first image from collection)
+    s1_first = s1_collection.first()
+    s1_id = s1_first.get('system:index')
+    s1_scene_id = s1_id.getInfo() if s1_id is not None else "N/A"
+    
     urls['Sentinel-1 VV'] = s1_img.getThumbURL({
         'region': point, 'dimensions': 512, 'min': -25, 'max': 0,
         'palette': ['black', 'white']})
+    
     # Plot all images
     import requests
     from PIL import Image
     from io import BytesIO
     import matplotlib.pyplot as plt
+    
     plt.figure(figsize=(12, 7))
     for i, (name, url) in enumerate(urls.items()):
         response = requests.get(url)
@@ -47,8 +70,14 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
         plt.imshow(im)
         plt.title(name)
         plt.axis('off')
+    
     plt.tight_layout()
     plt.show()
+    
+    # Print scene IDs for reference
+    print(f"\n[INFO] Scene IDs used:")
+    print(f"  Sentinel-2: {s2_scene_id}")
+    print(f"  Sentinel-1: {s1_scene_id}")
 
 # Example usage for all matches using the in-memory df_matches DataFrame:
 import pandas as pd
