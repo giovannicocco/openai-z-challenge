@@ -1,3 +1,5 @@
+#get-benchmark-data.py
+
 # --- DATASET IDS USED ---
 DATASET_IDS = [
     'COPERNICUS/S2_SR_HARMONIZED',
@@ -11,7 +13,7 @@ DATASET_IDS = [
 print("[INFO] Datasets used in this script:")
 for ds in DATASET_IDS:
     print(f"  - {ds}")
-print()  # Linha em branco para separar do próximo bloco
+print()
 
 # --- Earth Engine functions ---
 # --- Authenticate with Earth Engine before running this block ---
@@ -27,11 +29,21 @@ def get_ndvi(lat, lon, year=2023, buffer_m=50):
     s2 = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
           .filterBounds(point)
           .filterDate(f'{year}-01-01', f'{year}-12-31')
-          .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
-          .map(lambda img: img.normalizedDifference(['B8', 'B4']).rename('NDVI')))
-    ndvi = s2.median().select('NDVI').reduceRegion(
+          .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10)))
+    # Get the least cloudy image
+    s2_sorted = s2.sort('CLOUDY_PIXEL_PERCENTAGE')
+    img = ee.Image(s2_sorted.first())
+    ndvi_img = img.normalizedDifference(['B8', 'B4']).rename('NDVI')
+    ndvi = ndvi_img.select('NDVI').reduceRegion(
         reducer=ee.Reducer.mean(), geometry=point, scale=10).get('NDVI')
-    return ndvi.getInfo() if ndvi is not None else None
+    # Get the image ID
+    img_id = img.get('PRODUCT_ID')
+    if img_id is None:
+        img_id = img.get('system:index')
+    return {
+        'ndvi': ndvi.getInfo() if ndvi is not None else None,
+        'sentinel2_id': img_id.getInfo() if img_id is not None else None
+    }
 
 def get_ndwi(lat, lon, year=2023, buffer_m=50):
     point = ee.Geometry.Point([lon, lat]).buffer(buffer_m)
@@ -90,13 +102,19 @@ def get_sentinel1_vv(lat, lon, year=2023, buffer_m=1000):
             .select('VV')
         count = s1.size().getInfo()
         if count == 0:
-            return None
+            return {'vv': None, 'sentinel1_id': None}
         s1_img = s1.median()
         vv_value = s1_img.reduceRegion(ee.Reducer.mean(), point, 30).get('VV')
-        return vv_value.getInfo() if vv_value is not None else None
+        # Get scene ID from first image
+        first_img = ee.Image(s1.first())
+        img_id = first_img.get('system:index')
+        return {
+            'vv': vv_value.getInfo() if vv_value is not None else None,
+            'sentinel1_id': img_id.getInfo() if img_id is not None else None
+        }
     except Exception as e:
         print(f"Sentinel-1 VV error at ({lat}, {lon}): {e}")
-        return None
+        return {'vv': None, 'sentinel1_id': None}
 
 def get_sentinel1_vh(lat, lon, year=2023, buffer_m=1000):
     """
@@ -181,11 +199,13 @@ def enrich_benchmarks_with_all_sensors(
     delay=1
 ):
     ndvi_list = []
+    s2_id_list = []
     ndwi_list = []
     ndbi_list = []
     elev_list = []
     slope_list = []
     vv_list = []
+    s1_id_list = []
     vh_list = []
     landclass_list = []
     canopyheight_list = []
@@ -193,35 +213,65 @@ def enrich_benchmarks_with_all_sensors(
     for idx, row in df.iterrows():
         lat, lon = row['lat'], row['lon']
         print(f"Processing {row.get('name', 'site')} ({lat}, {lon})...")
-        ndvi_list.append(get_ndvi(lat, lon, ndvi_year, buffer_m))
+        
+        # Get NDVI and Sentinel-2 ID
+        ndvi_result = get_ndvi(lat, lon, ndvi_year, buffer_m)
+        if isinstance(ndvi_result, dict):
+            ndvi_list.append(ndvi_result['ndvi'])
+            s2_id_list.append(ndvi_result['sentinel2_id'])
+        else:
+            ndvi_list.append(ndvi_result)
+            s2_id_list.append(None)
+        
         ndwi_list.append(get_ndwi(lat, lon, ndwi_year, buffer_m))
         ndbi_list.append(get_ndbi(lat, lon, ndbi_year, buffer_m))
         elev_list.append(get_srtm_elevation(lat, lon, buffer_m))
         slope_list.append(get_srtm_slope(lat, lon, buffer_m))
-        vv_list.append(get_sentinel1_vv(lat, lon, s1_year, buffer_m=1000))
+        
+        # Get Sentinel-1 VV and ID
+        s1_vv_result = get_sentinel1_vv(lat, lon, s1_year, buffer_m=1000)
+        if isinstance(s1_vv_result, dict):
+            vv_list.append(s1_vv_result['vv'])
+            s1_id_list.append(s1_vv_result['sentinel1_id'])
+        else:
+            vv_list.append(s1_vv_result)
+            s1_id_list.append(None)
+        
         vh_list.append(get_sentinel1_vh(lat, lon, s1_year, buffer_m=1000))
         landclass_list.append(get_mapbiomas_class(lat, lon, mapbiomas_year))
         canopyheight_list.append(get_gedi_canopy_height(lat, lon))
         time.sleep(delay)  # To avoid quota limits
 
     df['NDVI'] = ndvi_list
+    df['Sentinel2_ID'] = s2_id_list
     df['NDWI'] = ndwi_list
     df['NDBI'] = ndbi_list
     df['Elevation'] = elev_list
     df['Slope'] = slope_list
     df['Sentinel1_VV'] = vv_list
+    df['Sentinel1_ID'] = s1_id_list
     df['Sentinel1_VH'] = vh_list
     df['MapBiomas_Class'] = landclass_list
     df['CanopyHeight'] = canopyheight_list
     return df
 
 # --- Usage example ---
+
 # df_benchmark = pd.read_csv("benchmark_sites_acre.csv")  # or from previous cell
 df_benchmark = enrich_benchmarks_with_all_sensors(df_benchmark)
+
+# Remove 'Google Maps' column if present (inherited from other scripts)
+if 'Google Maps' in df_benchmark.columns:
+    df_benchmark.drop(columns=['Google Maps'], inplace=True)
+# Keep 'Sentinel2_ID' and 'Sentinel1_ID' columns - only these sensors have individual scene IDs
+# Other sensors (SRTM, MapBiomas, GEDI, NASA/JPL) are static/aggregated datasets without individual scene IDs
 
 # Substitui infinitos por NaN para evitar warnings do pandas
 import numpy as np
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 df_benchmark.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+# Display the main DataFrame with scene IDs included
+from IPython.display import display
 display(df_benchmark)
