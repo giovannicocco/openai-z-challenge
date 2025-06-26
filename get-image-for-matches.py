@@ -16,10 +16,14 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     img = s2_collection.first().clip(point)
     
     # Get Sentinel-2 scene ID
-    s2_id = img.get('PRODUCT_ID')
-    if s2_id is None:
-        s2_id = img.get('system:index')
-    s2_scene_id = s2_id.getInfo() if s2_id is not None else "N/A"
+    try:
+        s2_id = img.get('PRODUCT_ID')
+        if s2_id is None:
+            s2_id = img.get('system:index')
+        s2_scene_id = s2_id.getInfo() if s2_id is not None else "N/A"
+    except Exception as e:
+        print(f"[WARNING] Could not get Sentinel-2 scene ID: {e}")
+        s2_scene_id = "N/A"
     
     # URLs for each composite
     urls = {}
@@ -45,16 +49,33 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
         .filter(ee.Filter.listContains('transmitterReceiverPolarisation', 'VV')) \
         .select('VV')
     
-    s1_img = s1_collection.median().clip(point)
-    
-    # Get Sentinel-1 scene ID (using first image from collection)
-    s1_first = s1_collection.first()
-    s1_id = s1_first.get('system:index')
-    s1_scene_id = s1_id.getInfo() if s1_id is not None else "N/A"
-    
-    urls['Sentinel-1 VV'] = s1_img.getThumbURL({
-        'region': point, 'dimensions': 512, 'min': -25, 'max': 0,
-        'palette': ['black', 'white']})
+    # Check if Sentinel-1 collection has any images
+    s1_size = s1_collection.size()
+    try:
+        s1_count = s1_size.getInfo()
+        if s1_count > 0:
+            s1_img = s1_collection.median().clip(point)
+            
+            # Get Sentinel-1 scene ID (using first image from collection)
+            try:
+                s1_first = s1_collection.first()
+                s1_id = s1_first.get('system:index')
+                s1_scene_id = s1_id.getInfo() if s1_id is not None else "N/A"
+            except Exception as e:
+                print(f"[WARNING] Could not get Sentinel-1 scene ID: {e}")
+                s1_scene_id = "N/A"
+            
+            urls['Sentinel-1 VV'] = s1_img.getThumbURL({
+                'region': point, 'dimensions': 512, 'min': -25, 'max': 0,
+                'palette': ['black', 'white']})
+        else:
+            print(f"[WARNING] No Sentinel-1 images found for this location and time period")
+            s1_scene_id = "No images available"
+            # Skip adding Sentinel-1 VV to urls
+    except Exception as e:
+        print(f"[WARNING] Error processing Sentinel-1 data: {e}")
+        s1_scene_id = "Error processing"
+        # Skip adding Sentinel-1 VV to urls
     
     # Plot all images
     import requests
@@ -62,14 +83,31 @@ def plot_multiple_satellite_views(lat, lon, buffer_m=1000, year=2023):
     from io import BytesIO
     import matplotlib.pyplot as plt
     
-    plt.figure(figsize=(12, 7))
-    for i, (name, url) in enumerate(urls.items()):
-        response = requests.get(url)
-        im = Image.open(BytesIO(response.content))
-        plt.subplot(2, 3, i+1)
-        plt.imshow(im)
-        plt.title(name)
-        plt.axis('off')
+    # Calculate subplot dimensions based on number of images
+    num_images = len(urls)
+    if num_images <= 3:
+        rows, cols = 1, num_images
+        figsize = (4 * num_images, 4)
+    else:
+        rows, cols = 2, 3
+        figsize = (12, 8)
+    
+    plt.figure(figsize=figsize)
+    
+    plot_idx = 1
+    for name, url in urls.items():
+        try:
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()  # Raise an exception for bad status codes
+            im = Image.open(BytesIO(response.content))
+            plt.subplot(rows, cols, plot_idx)
+            plt.imshow(im)
+            plt.title(name)
+            plt.axis('off')
+            plot_idx += 1
+        except Exception as e:
+            print(f"[WARNING] Could not load image for {name}: {e}")
+            # Continue with other images
     
     plt.tight_layout()
     plt.show()
